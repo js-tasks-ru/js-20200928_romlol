@@ -7,7 +7,7 @@
 export const omit = (obj, ...fields) => {
     const result = Object.assign({}, obj);
     fields.forEach(field => {
-        delete result[field];
+        result[field] = undefined;
     });
     return result;
 };
