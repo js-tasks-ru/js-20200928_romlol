@@ -29,11 +29,10 @@ export default class NotificationMessage {
     const element = document.createElement('div');
     element.innerHTML = this.notification;
     this.element = element.firstElementChild;
-    this.element.hidden = true;
+    this.show();
   }
 
   show(container = document.body) {
-    this.element.hidden = false;
     this.container = container;
     this.container.append(this.element);
     setTimeout(() => this.destroy(), this.duration);
