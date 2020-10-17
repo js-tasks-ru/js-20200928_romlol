@@ -1,19 +1,23 @@
 export default class NotificationMessage {
+  static currentNotification;
   constructor(
     message = '',
     {
-      duration = 0,
+      duration = 2000,
       type = 'success'
     } = {}) {
+    if (NotificationMessage.currentNotification) {
+      NotificationMessage.currentNotification.remove();
+    }
     this.message = message;
     this.duration = duration;
     this.type = type;
-    this.create();
+    this.render();
   }
 
-  get notification() {
+  get notificationTemplate() {
     return `
-      <div class="notification ${this.type}" style="--value:${Math.floor(this.duration / 1000)}s">
+      <div class="notification ${this.type}" style="--value:${(this.duration / 1000)}s">
         <div class="timer"></div>
         <div class="inner-wrapper">
           <div class="notification-header">${this.type}</div>
@@ -25,17 +29,15 @@ export default class NotificationMessage {
     `;
   }
 
-  create() {
+  render() {
     const element = document.createElement('div');
-    element.innerHTML = this.notification;
-    this.element = element.firstElementChild;
-    this.show();
+    element.innerHTML = this.notificationTemplate;
+    NotificationMessage.currentNotification = this.element = element.firstElementChild;
   }
 
   show(container = document.body) {
-    this.container = container;
-    this.container.append(this.element);
-    setTimeout(() => this.destroy(), this.duration);
+    container.append(this.element);
+    setTimeout(() => this.remove(), this.duration);
   }
 
   remove() {
