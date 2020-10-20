@@ -1,15 +1,19 @@
 export default class DoubleSlider {
 
   constructor({
-    minValue = '$10',
-    maxValue = '$100',
-    left = 0,
-    right = 0
+    min = 100,
+    max = 200,
+    formatValue = value => '$' + value,
+    selected = {
+      from: min,
+      to: max
+    }
   } = {}) {
-    this.minValue = minValue;
-    this.maxValue = maxValue;
-    this.left = left;
-    this.right = right;
+    this.min = min;
+    this.max = max;
+    this.range = max - min;
+    this.formatValue = formatValue;
+    this.selected = selected;
     this.render();
   }
 
@@ -17,90 +21,119 @@ export default class DoubleSlider {
     const element = document.createElement('div');
     element.innerHTML = this.getTemplate;
     this.element = element.firstElementChild;
+    this.subElements = this.getSubElements(element);
     document.body.appendChild(this.element);
-    this.leftSlider = this.element.querySelector('.range-slider__thumb-left');
-    this.rightSlider = this.element.querySelector('.range-slider__thumb-right');
-    this.progress = this.element.querySelector('.range-slider__progress');
-    this.recalcPositions();
-    this.addEventListener();
+    this.initEventListeners();
+    this.setDefault();
   }
 
-  addEventListener() {
-    this.element.addEventListener('range-select', this.rangeSelect.bind(this));
-    window.addEventListener('resize', this.recalcPositions.bind(this));
-
-    this.element.addEventListener('mousedown', this.mouseDown.bind(this));
-    this.element.addEventListener('mousemove', this.mouseMove.bind(this));
-    this.element.addEventListener('mouseup', this.mouseUp.bind(this));
+  initEventListeners() {
+    document.addEventListener('pointerdown', this.mouseDown);
   }
 
-  recalcPositions(event) {
-    this.minPosition = this.progress.getBoundingClientRect().left;
-    this.maxPosition = this.progress.getBoundingClientRect().right;
-
-    this.leftSliderPosition = this.minPosition + this.getSliderLength * this.left / 100;
-    this.rightSliderPosition = this.maxPosition - this.getSliderLength * this.right / 100;
+  removeListeners() {
+    document.removeEventListener('pointerdown', this.mouseDown);
+    document.removeEventListener('pointermove', this.mouseMove);
+    document.removeEventListener('pointerup', this.mouseUp);
   }
 
-  rangeSelect(event) {
-    //rangeSelect
+  setDefault() {
+    const left = Math.floor((this.selected.from - this.min) / this.range * 100) + '%';
+    const right = Math.floor((this.max - this.selected.to) / this.range * 100) + '%';
+
+    this.subElements.progress.style.left = left;
+    this.subElements.progress.style.right = right;
+
+    this.subElements.thumbLeft.style.left = left;
+    this.subElements.thumbRight.style.right = right;
   }
 
   get getSliderLength() {
-    return this.maxPosition - this.minPosition;
+    return this.subElements.inner.getBoundingClientRect().width;
   }
 
-  mouseDown(event) {
-    if (event.target === this.leftSlider) {
-      this.minNewPosition = this.minPosition;
-      this.maxNewPosition = this.rightSliderPosition;
-      this.currentMovableElement = event.target;
+  mouseDown = event => {
+    if (event.target === this.subElements.thumbLeft) {
+      this.minNewPosition = this.subElements.inner.getBoundingClientRect().left;
+      this.maxNewPosition = this.subElements.thumbRight.getBoundingClientRect().left;
+
     }
-    if (event.target === this.rightSlider) {
-      this.minNewPosition = this.leftSliderPosition;
-      this.maxNewPosition = this.maxPosition;
-      this.currentMovableElement = event.target;
+    if (event.target === this.subElements.thumbRight) {
+      this.minNewPosition = this.subElements.thumbLeft.getBoundingClientRect().right;
+      this.maxNewPosition = this.subElements.inner.getBoundingClientRect().right;
     }
+    this.currentMovableElement = event.target;
+    document.addEventListener('pointermove', this.mouseMove);
+    document.addEventListener('pointerup', this.mouseUp);
   }
 
-  mouseMove(event) {
+  mouseMove = event => {
     if (!this.currentMovableElement) {
       return;
     }
-    this.newPosition = null;
-
-    if (event.offsetX - this.minPosition) {
-
+    let newPosition = event.clientX - 5;
+    if (this.minNewPosition > event.clientX) {
+      newPosition = this.minNewPosition;
     }
-    if (this.minNewPosition < event.offsetX && event.offsetX < this.maxNewPosition) {
-      switch (this.currentMovableElement) {
-      case this.leftSlider:
-        console.log(event.offsetX + this.minPosition, this.getSliderLength);
-        this.currentMovableElement.style.left = ((event.offsetX + this.minPosition) / this.getSliderLength * 100 - 100) + '%';
-        break;
-      case this.rightSlider:
-        this.currentMovableElement.style.right = (event.offsetX / this.maxPosition * 100) + '%';
-        break;
-      }
+    if (event.clientX > this.maxNewPosition) {
+      newPosition = this.maxNewPosition;
+    }
+    switch (this.currentMovableElement) {
+    case this.subElements.thumbLeft:
+      const leftP = (newPosition - this.minNewPosition) / this.getSliderLength * 100;
+      this.subElements.progress.style.left = `${leftP}%`;
+      this.subElements.thumbLeft.style.left = `${leftP}%`;
+      this.subElements.from.innerHTML = this.formatValue(this.getValue().from);
+      break;
+    case this.subElements.thumbRight:
+      const rightP = (this.maxNewPosition - newPosition) / this.getSliderLength * 100;
+      this.subElements.progress.style.right = `${rightP}%`;
+      this.subElements.thumbRight.style.right = `${rightP}%`;
+      this.subElements.to.innerHTML = this.formatValue(this.getValue().to);
+      break;
     }
   }
 
-  mouseUp(event) {
-    this.currentMovableElement = null;
+  mouseUp = event => {
+    const customEvent = new CustomEvent('range-select', {
+      detail: this.getValue(),
+      bubbles: true
+    });
+    this.element.dispatchEvent(customEvent);
+    document.removeEventListener('pointermove', this.mouseMove);
+    document.removeEventListener('pointerup', this.mouseUp);
   }
 
   get getTemplate() {
     return `
     <div class="range-slider">
-      <span>${this.minValue}</span>
-      <div class="range-slider__inner">
-        <span class="range-slider__progress" style="left: ${this.left}%; right: ${this.right}%"></span>
-        <span class="range-slider__thumb-left" style="left: ${this.left}%"></span>
-        <span class="range-slider__thumb-right" style="right: ${this.right}%"></span>
+      <span data-element="from">${this.formatValue(this.selected.from)}</span>
+      <div data-element="inner" class="range-slider__inner">
+        <span data-element="progress" class="range-slider__progress" style="left: ${this.left}%; right: ${this.right}%"></span>
+        <span data-element="thumbLeft" class="range-slider__thumb-left" style="left: ${this.left}%"></span>
+        <span data-element="thumbRight" class="range-slider__thumb-right" style="right: ${this.right}%"></span>
       </div>
-      <span>${this.maxValue}</span>
+      <span data-element="to">${this.formatValue(this.selected.to)}</span>
     </div>
     `;
+  }
+
+  getValue() {
+    const { left } = this.subElements.thumbLeft.style;
+    const { right } = this.subElements.thumbRight.style;
+
+    const from = Math.round(this.min + parseFloat(left) * 0.01 * this.range);
+    const to = Math.round(this.max - parseFloat(right) * 0.01 * this.range);
+
+    return { from, to };
+  }
+
+  getSubElements(element) {
+    const elements = element.querySelectorAll('[data-element]');
+    return [...elements].reduce((accum, subElement) => {
+      accum[subElement.dataset.element] = subElement;
+      return accum;
+    }, {});
   }
 
   remove() {
@@ -109,5 +142,6 @@ export default class DoubleSlider {
 
   destroy() {
     this.remove();
+    this.removeListeners();
   }
 }
