@@ -1,8 +1,7 @@
-import Fetch from './utils/fetch-json.js';
+import customFetch from './utils/fetch-json.js';
 import escapeHtml from './utils/escape-html.js';
 export default class ColumnChart {
-
-  static chartHeight = 50;
+  chartHeight = 50;
 
   constructor ({
     url = '',
@@ -14,23 +13,22 @@ export default class ColumnChart {
     label = '',
     link = ''
   } = {}) {
-    this.url = url;
+    this.url = new URL(url, "https://course-js.javascript.ru");
     this.label = label;
     this.value = value;
     this.link = link;
+    this.range = range;
     this.calcValues = [];
     this.render();
   }
 
-  render() {
+  async render() {
     const element = document.createElement('div');
     element.innerHTML = this.getTemplate;
     this.element = element.firstElementChild;
     this.subElements = this.getSubElements(element);
     document.body.appendChild(this.element);
-    if (this.url) {
-      this.loadData();
-    }
+    await this.update();
   }
 
   get getLink() {
@@ -45,7 +43,7 @@ export default class ColumnChart {
 
   get getTemplate() {
     return `
-      <div class="column-chart column-chart_loading">
+      <div class="column-chart">
         <div class="column-chart__title">
         Total ${this.label}
         ${this.getLink}
@@ -53,10 +51,16 @@ export default class ColumnChart {
       <div class="column-chart__container">
         <div data-element="header" class="column-chart__header">${this.value}</div>
         <div data-element="body" class="column-chart__chart">
-          ${this.calcValues.map(value => this.getChartColumn(value)).join('')}
+          ${this.getColumns}
         </div>
       </div>
     </div>
+    `;
+  }
+
+  get getColumns() {
+    return `
+        ${this.calcValues.map(value => this.getChartColumn(value)).join('')}
     `;
   }
 
@@ -72,13 +76,25 @@ export default class ColumnChart {
     }, {});
   }
 
-  loadData() {
-    fetch()
-    update();
+  async update(from = this.range.from, to = this.range.to) {
+    this.element.classList.add('column-chart_loading');
+    this.url.searchParams.set("from", from);
+    this.url.searchParams.set("to", to);
+    const result = await customFetch(this.url);
+    this.updateData(result);
+    this.subElements.header.innerHTML = this.value;
+    this.subElements.body.innerHTML = this.getColumns;
+    this.element.classList.remove('column-chart_loading');
   }
 
-  update() {
-
+  updateData(data) {
+    const countData = [];
+    this.value = 0;
+    for (const value of Object.entries(data).values()) {
+      countData.push(value[1]);
+      this.value += value[1];
+    }
+    this.calcValues = this.calcColumnValue(countData);
   }
 
   remove() {
@@ -89,24 +105,9 @@ export default class ColumnChart {
     this.remove();
   }
 
-  update(data = []) {
-    this.data = data;
-    this.render();
-  }
-
-  addColumns(container) {
-    const calvValues = this.calcColumnValue(this.data);
-    for (const value of calvValues) {
-      const element = document.createElement('div');
-      element.style.setProperty("--value", value.value);
-      element.dataset["tooltip"] = `${value.percent}%`;
-      container.appendChild(element);
-    }
-  }
-
   calcColumnValue(arr) {
     const maxValue = Math.max(...arr);
-    const scale = ColumnChart.chartHeight / maxValue;
+    const scale = this.chartHeight / maxValue;
     return arr.map(oldValue => {
       return {
         value: Math.floor(oldValue * scale),
