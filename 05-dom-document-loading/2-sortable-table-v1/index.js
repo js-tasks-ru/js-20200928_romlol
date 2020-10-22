@@ -1,5 +1,5 @@
 export default class SortableTable {
-  static orderType = {
+  orderType = {
     asc: 1,
     desc: -1
   };
@@ -28,7 +28,7 @@ export default class SortableTable {
   }
 
   sort(fieldValue, order) {
-    if (SortableTable.orderType[order]) {
+    if (this.orderType[order]) {
       this.sortTable(fieldValue, order);
     }
   }
@@ -40,7 +40,7 @@ export default class SortableTable {
     });
     const newSortedColumn = this.element.querySelector(`.sortable-table__cell[data-id='${field}']`);
     newSortedColumn.dataset.order = order;
-    const newSorterData = this.sortData(field, SortableTable.orderType[order]);
+    const newSorterData = this.sortData(field, this.orderType[order]);
     this.subElements.body.innerHTML = this.getTableRows(newSorterData);
   }
 

@@ -1,5 +1,5 @@
 export default class DoubleSlider {
-
+  subElements = {};
   constructor({
     min = 100,
     max = 200,
@@ -24,7 +24,7 @@ export default class DoubleSlider {
     this.subElements = this.getSubElements(element);
     document.body.appendChild(this.element);
     this.initEventListeners();
-    this.setDefault();
+    this.update();
   }
 
   initEventListeners() {
@@ -37,7 +37,7 @@ export default class DoubleSlider {
     document.removeEventListener('pointerup', this.mouseUp);
   }
 
-  setDefault() {
+  update() {
     const left = Math.floor((this.selected.from - this.min) / this.range * 100) + '%';
     const right = Math.floor((this.max - this.selected.to) / this.range * 100) + '%';
 
@@ -53,55 +53,72 @@ export default class DoubleSlider {
   }
 
   mouseDown = event => {
-    if (event.target === this.subElements.thumbLeft) {
-      this.minNewPosition = this.subElements.inner.getBoundingClientRect().left;
-      this.maxNewPosition = this.subElements.thumbRight.getBoundingClientRect().left;
+    const thumbElem = event.target;
 
+    event.preventDefault();
+
+    const { left, right } = thumbElem.getBoundingClientRect();
+
+    if (thumbElem === this.subElements.thumbLeft) {
+      this.shiftX = right - event.clientX;
+    } else {
+      this.shiftX = left - event.clientX;
     }
-    if (event.target === this.subElements.thumbRight) {
-      this.minNewPosition = this.subElements.thumbLeft.getBoundingClientRect().right;
-      this.maxNewPosition = this.subElements.inner.getBoundingClientRect().right;
-    }
-    this.currentMovableElement = event.target;
+
+    this.dragging = thumbElem;
     document.addEventListener('pointermove', this.mouseMove);
     document.addEventListener('pointerup', this.mouseUp);
   }
 
   mouseMove = event => {
-    if (!this.currentMovableElement) {
-      return;
-    }
-    let newPosition = event.clientX - 5;
-    if (this.minNewPosition > event.clientX) {
-      newPosition = this.minNewPosition;
-    }
-    if (event.clientX > this.maxNewPosition) {
-      newPosition = this.maxNewPosition;
-    }
-    switch (this.currentMovableElement) {
-    case this.subElements.thumbLeft:
-      const leftP = (newPosition - this.minNewPosition) / this.getSliderLength * 100;
-      this.subElements.progress.style.left = `${leftP}%`;
-      this.subElements.thumbLeft.style.left = `${leftP}%`;
+    const thumbElem = event.target;
+    event.preventDefault();
+
+    const { left: innerLeft, right: innerRight, width } = this.subElements.inner.getBoundingClientRect();
+    if (this.dragging === this.subElements.thumbLeft) {
+      let newLeft = (event.clientX - innerLeft + this.shiftX) / width;
+
+      if (newLeft < 0) {
+        newLeft = 0;
+      }
+      newLeft *= 100;
+      let right = parseFloat(this.subElements.thumbRight.style.right);
+
+      if (newLeft + right > 100) {
+        newLeft = 100 - right;
+      }
+
+      this.dragging.style.left = this.subElements.progress.style.left = newLeft + '%';
       this.subElements.from.innerHTML = this.formatValue(this.getValue().from);
-      break;
-    case this.subElements.thumbRight:
-      const rightP = (this.maxNewPosition - newPosition) / this.getSliderLength * 100;
-      this.subElements.progress.style.right = `${rightP}%`;
-      this.subElements.thumbRight.style.right = `${rightP}%`;
+    }
+
+    if (this.dragging === this.subElements.thumbRight) {
+      let newRight = (innerRight - event.clientX - this.shiftX) / width;
+
+      if (newRight < 0) {
+        newRight = 0;
+      }
+      newRight *= 100;
+
+      let left = parseFloat(this.subElements.thumbLeft.style.left);
+
+      if (left + newRight > 100) {
+        newRight = 100 - left;
+      }
+      this.dragging.style.right = this.subElements.progress.style.right = newRight + '%';
       this.subElements.to.innerHTML = this.formatValue(this.getValue().to);
-      break;
     }
   }
 
   mouseUp = event => {
+    document.removeEventListener('pointermove', this.mouseMove);
+    document.removeEventListener('pointerup', this.mouseUp);
+
     const customEvent = new CustomEvent('range-select', {
       detail: this.getValue(),
       bubbles: true
     });
     this.element.dispatchEvent(customEvent);
-    document.removeEventListener('pointermove', this.mouseMove);
-    document.removeEventListener('pointerup', this.mouseUp);
   }
 
   get getTemplate() {
