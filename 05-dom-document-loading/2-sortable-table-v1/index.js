@@ -3,7 +3,7 @@ export default class SortableTable {
     asc: 1,
     desc: -1
   };
-  static sortFunctions = {
+  sortFunctions = {
     'number': (a, b) => {
       return a - b;
     },
@@ -48,7 +48,7 @@ export default class SortableTable {
     const sortArr = [...this.data];
     const sortColumn = this.headerInfo.find(item => item.id === field);
     const sortType = sortColumn.sortType;
-    return sortArr.sort((a, b) => direction * SortableTable.sortFunctions[sortType].call(this, a[field], b[field]));
+    return sortArr.sort((a, b) => direction * this.sortFunctions[sortType].call(this, a[field], b[field]));
   }
 
   get tableTemplate() {
@@ -112,9 +112,7 @@ export default class SortableTable {
       return headerInfo.template(data);
     } else {
       return `
-        <div class="sortable-table__cell">
-          ${data}
-        </div>
+        <div class="sortable-table__cell">${data}</div>
       `;
     }
   }
@@ -125,6 +123,14 @@ export default class SortableTable {
       accum[subElement.dataset.element] = subElement;
       return accum;
     }, {});
+  }
+  remove() {
+    this.element.remove();
+  }
+
+  destroy() {
+    this.remove();
+    this.subElements = {};
   }
 }
 

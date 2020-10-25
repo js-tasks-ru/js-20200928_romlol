@@ -42,7 +42,7 @@ export default class SortableTable {
 
   addEventListener() {
     this.headerRow = this.element.querySelector('.sortable-table__header.sortable-table__row');
-    this.headerRow.addEventListener('click', this.onHeaderClick.bind(this));
+    this.headerRow.addEventListener('pointerdown', this.onHeaderClick.bind(this));
   }
 
   onHeaderClick(event) {
