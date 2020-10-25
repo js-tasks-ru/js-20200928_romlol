@@ -1,14 +1,15 @@
 class Tooltip {
+  shift = 20;
   initialize() {
     document.addEventListener('pointerover', this.tooltipPointerover.bind(this));
-    document.addEventListener('pointerout', this.tooltipPointerout.bind(this));
-    document.addEventListener('mousemove', this.tooltipMouseMove.bind(this));
   }
 
   tooltipPointerover(event) {
     if (event.target.dataset.tooltip !== undefined) {
       this.text = event.target.dataset.tooltip;
       this.render();
+      document.addEventListener('mousemove', this.tooltipMouseMove.bind(this));
+      document.addEventListener('pointerout', this.tooltipPointerout.bind(this));
     }
   }
 
@@ -20,8 +21,8 @@ class Tooltip {
 
   tooltipMouseMove(event) {
     if (this.element) {
-      this.element.style.left = event.offsetX + 20 + 'px';
-      this.element.style.top = event.offsetY + 20 + 'px';
+      this.element.style.left = event.offsetX + this.shift + 'px';
+      this.element.style.top = event.offsetY + this.shift + 'px';
     }
   }
 
