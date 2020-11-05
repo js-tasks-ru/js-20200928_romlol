@@ -4,11 +4,17 @@ const header = [
     title: 'Image',
     sortable: false,
     template: data => {
-      return `
+      if (data.length > 0) {
+        return `
           <div class="sortable-table__cell">
             <img class="sortable-table-image" alt="Image" src="${data[0].url}">
           </div>
         `;
+      } else {
+        return `
+          <div class="sortable-table__cell"></div>
+        `;
+      }
     }
   },
   {
